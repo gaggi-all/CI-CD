@@ -1,0 +1,61 @@
+default:
+  tags:
+    - build
+
+stages:
+  - build
+  - style
+  - test
+  - deploy
+
+build:
+  stage: build
+  script:
+    - cd src/cat
+    - make s21_cat
+    - cd ../grep
+    - make s21_grep
+
+  artifacts:
+    paths:
+      - src/cat
+      - src/grep
+    expire_in: 30 days
+
+  after_script:
+    - chmod 777 src/telegram.sh
+    - bash src/telegram.sh CI
+
+style:
+  stage: style
+  script:
+    - cd materials/linters
+    - cp .clang-format ../../src
+    - clang-format -i ../../src/**/*.c ../../src/**/*.h
+    - git diff --exit-code
+
+  after_script:
+    - bash src/telegram.sh CI
+
+test:
+  stage: test
+  script:
+    - cd src/cat
+    - chmod 777 TEST_CAT.sh
+    - ./TEST_CAT.sh
+    - cd ../grep
+    - chmod 777 TEST_GREP.sh
+    - ./TEST_GREP.sh
+
+  after_script:
+    - bash src/telegram.sh CI
+
+deploy:
+  stage: deploy
+  script:
+    - chmod 777 src/deploy.sh
+    - bash src/deploy.sh
+  when: manual
+  
+  after_script:
+    - bash src/telegram.sh CD
